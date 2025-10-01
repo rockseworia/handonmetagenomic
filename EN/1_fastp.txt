@@ -1,0 +1,74 @@
+According to the data returned by sequencing companies, there are
+generally two types of file structures:
+
+1)  
+
+A 
+|-A_R1.fastq.gz 
+|-A_R2.fastq.gz 
+B 
+|-B_R1.fastq.gz 
+|-B_R2.fastq.gz ……
+
+or
+
+2)  
+
+A_R1.fastq.gz 
+A_R2.fastq.gz 
+B_R1.fastq.gz 
+B_R2.fastq.gz 
+……
+
+Of course, this doesn' t really make much difference, but you' ll need to slightly modify your code depending on the structure.
+
+I suggest using fastp, whose GitHub repository is here: https://github.com/OpenGene/fastp
+
+For single-end data, the syntax is:
+
+fastp -i in.fq -o out.fq
+
+For paired-end data, the syntax is:
+
+fastp -i in.R1.fq.gz -I in.R2.fq.gz -o out.R1.fq.gz -O out.R2.fq.gz
+
+But I assume you most likely have more than one sample (and I also assume you are not working with single-end sequencing). What you need to do is:
+
+1)  ls * > sample.name
+
+Get the sample names from the current working directory. 
+
+2)  cat sample.name | while read i; 
+do 
+echo “mkdir -p fastp/${i}; fastp -i i/{i}_R1.fastq.gz -I i/{i}_R2.fastq.gz -o fastp/i/{i}_clean_1.fq.gz -O fastp/i/{i}_clean_1.fq.gz 1>fastp/i.fp.o2 > fastp/{i}.fp.e -j fastp/i.fp.json − hfastp/{i}.fp.html; echo ${i} finish”; 
+done > fastp.sh
+
+Note:
+
+1.  Here I assume your workflow is structured like this:
+
+rawdata 
+|-fastp 
+  |-hostremove 
+    |-assembly 
+      |-bin 
+        |-……
+
+But in fact, this may not be the best arrangement. Perhaps placing them at the same level is better:
+
+rawdata 
+fastp 
+hostremove 
+assembly 
+bin 
+……
+
+Either way is fine—it’s just a matter of choice. The key point is to pay attention to the content inside the echo command, especially the locations of the raw reads.
+
+2.  Some sequencing companies already perform quality control on raw reads before returning them. For example, BGI uses SOAPnuke. In this case, whether or not you want to run another QC step is up to you. SOAPnuke is also open source: https://github.com/BGI-flexlab/SOAPnuke
+
+Finally, just run it. Normally, you would run it in the background on your instance, saving error and log files, for example:
+
+nohup bash fastp.sh 1>fastp.sh.o 2>fastp.sh.e &
+
+After that, you will obtain the quality-controlled reads. The following steps will continue in the hostremove section.
