@@ -1,0 +1,74 @@
+根据测序公司返回的数据来说，一般会有两种文件结构：
+
+1）
+
+A
+|-A_R1.fastq.gz
+|-A_R2.fastq.gz
+B
+|-B_R1.fastq.gz
+|-B_R2.fastq.gz
+......
+
+或
+
+2）
+
+A_R1.fastq.gz
+A_R2.fastq.gz
+B_R1.fastq.gz
+B_R2.fastq.gz
+......
+
+
+当然这并无没什么区别，不过需要因地制宜稍微修改一下代码.
+
+
+我建议你使用fastp，该项目的github仓库位是：https://github.com/OpenGene/fastp
+
+
+对于single-end data,其语法格式为：
+
+fastp -i in.fq -o out.fq
+
+对于paired-end data,其语法格式为:
+
+fastp -i in.R1.fq.gz -I in.R2.fq.gz -o out.R1.fq.gz -O out.R2.fq.gz
+
+但我认为你大概率不只有一个样本(当然我也默认你不会选择单端测序)，你要做的是:
+
+1)
+ls * > sample.name
+
+# 获取当前工作目录下的样本名字，我按照1）的A情况举例
+
+2)
+cat sample.name | while read i;
+do
+echo "mkdir -p fastp/${i}; fastp -i ${i}/${i}_R1.fastq.gz -I ${i}/${i}_R2.fastq.gz -o fastp/${i}/${i}_clean_1.fq.gz -O fastp/${i}/${i}_clean_1.fq.gz 1>fastp/${i}.fp.o 2>fastp/${i}.fp.e -j fastp/${i}.fp.json -h fastp/${i}.fp.html; echo ${i} finish"；
+done > fastp.sh
+
+note:
+1)在这里我假设你的工作逻辑是:
+
+rawdata
+|-fastp
+  |-hostremove
+    |-assembly
+      |-bin
+        |-......
+
+不过事实上这种可能并不太合适；也许并列会更好；
+rawdata
+fastp
+hostremove
+assembly
+bin
+......
+都是选择吧，其实都一样。这里注意echo里面的内容，注意raw read的位置。
+
+2)有的测序公司在返回raw read的时候往往就已经做过指控了，比如华大基因的SOAPnuke，此时其实是否质控就看个人选择了。该软件同样是开源软件:https://github.com/BGI-flexlab/SOAPnuke
+
+接下来运行即可，一般在个人实例后台运行且存储error和log，选择nohup bash fastp.sh 1>fastp.sh.o 2>fastp.sh.e &
+
+之后就会获得质控之后的read,之后的内容在hostremove章节中继续。
